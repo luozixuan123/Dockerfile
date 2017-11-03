@@ -1,1 +1,1 @@
-FROM mercuriete/sonar-scanner
+FROM mercuriete/sonar-scanner:onbuild
