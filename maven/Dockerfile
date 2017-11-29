@@ -1,3 +1,4 @@
 FROM maven:latest
 
-RUN mvn -f pom.xml dependency:copy-dependencies
+VOLUME pom.xml:/run:rw
+RUN mvn -f /run/pom.xml dependency:copy-dependencies
