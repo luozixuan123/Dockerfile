@@ -1,3 +1,3 @@
-FROM jermainedavis/java-python
+FROM aturner/java-python:latest
 
 RUN pip install scipy
