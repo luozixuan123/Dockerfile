@@ -1,3 +1,3 @@
-FROM python:3.5
+FROM jermainedavis/java-python
 
 RUN pip install scipy
