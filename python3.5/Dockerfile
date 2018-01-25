@@ -1,1 +1,1 @@
-FROM aturner/java-python:latest
+FROM java:8
