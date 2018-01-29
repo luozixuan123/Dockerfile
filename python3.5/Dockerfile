@@ -1,68 +1,67 @@
-FROM tedder42/ubuntu-python3-scipy:latest
+FROM phusion/baseimage:0.9.18
+# debian based; https://github.com/docker-library/openjdk/blob/master/openjdk-8-jre/Dockerfile
 
-#update
-RUN yum -y update; yum clean all
-#install tools
-RUN yum install -y wget unzip tar
-#install supervisor
-RUN yum install -y python-setuptools
-RUN easy_install supervisor
-RUN mkdir -p /var/log/supervisor
+# we need python- for aws-cli, if nothing else.
+ADD get-pip.py /usr/src/get-pip.py
+ADD requirements.txt /usr/src/requirements.txt
 
-#install httpd
-RUN yum -y install httpd
+## OpenJDK 8 PPA
+RUN echo deb http://ppa.launchpad.net/openjdk-r/ppa/ubuntu trusty main > /etc/apt/sources.list.d/openjdk8.list && apt-key adv --keyserver keyserver.ubuntu.com --recv-keys DA1A4A13543B466853BAF164EB9B1D8886F44E2A && DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y libpq-dev gcc python3-dev openjdk-8-jre-headless openjdk-8-jdk unzip libffi-dev build-essential libssl-dev
+RUN /var/lib/dpkg/info/ca-certificates-java.postinst configure && apt-get install -y ca-certificates ca-certificates-java
+RUN python3 /usr/src/get-pip.py && pip3 install --upgrade awscli && LANG=en_US.UTF-8 pip install --upgrade -r /usr/src/requirements.txt
 
-#config httpd
-RUN mkdir -p /data
-ADD conf/httpd/wwwroot /data/wwwroot
-ADD conf/httpd/wwwconf /data/wwwconf
-ADD conf/httpd/httpd.conf /etc/httpd/conf/httpd.conf
+ADD aws-rds-ssl-2016.pem /usr/src/aws-rds-ssl-2016.pem
+# 'changeit' is the default for java. yeah, wtf.
+RUN keytool -import -keystore /etc/ssl/certs/java/cacerts -file /usr/src/aws-rds-ssl-2016.pem -storepass 'changeit' -noprompt -alias aws-rds-2016-v2
+# currently (12/21/2016) 174 certs. We just want to make sure it isn't zero or one.
+RUN keytool -list -keystore /etc/ssl/certs/java/cacerts -storepass 'changeit' -noprompt |grep -c "Certificate fingerprint"
+RUN CERTCOUNT=$(keytool -list -keystore /etc/ssl/certs/java/cacerts -storepass 'changeit' -noprompt |grep -c "Certificate fingerprint"); if [ "$CERTCOUNT" -gt 100 ]; then echo "we have enough certs ($CERTCOUNT)"; else echo "wat, we expected more certs ($CERTCOUNT)"; exit 1; fi
 
-#install jdk
-ENV JAVA_VERSION 8u45
-ENV BUILD_VERSION b14
-RUN wget --no-cookies --no-check-certificate --header "Cookie: oraclelicense=accept-securebackup-cookie" "http://download.oracle.com/otn-pub/java/jdk/$JAVA_VERSION-$BUILD_VERSION/jdk-$JAVA_VERSION-linux-x64.rpm" -O /tmp/jdk-8-linux-x64.rpm
-RUN yum -y install /tmp/jdk-8-linux-x64.rpm
-RUN rm -rf /tmp/jdk-8-linux-x64.rpm
-RUN alternatives --install /usr/bin/java jar /usr/java/latest/bin/java 200000
-RUN alternatives --install /usr/bin/javaws javaws /usr/java/latest/bin/javaws 200000
-RUN alternatives --install /usr/bin/javac javac /usr/java/latest/bin/javac 200000
-ENV JAVA_HOME /usr/java/latest
+ENV build_s3_bucket="BUCKET_NAME"
+ENV build_s3_key="BUCKET_KEY"
 
-#install tomcat
-ENV TOMCAT_VERSION 7.0.62
-RUN wget http://mirrors.cnnic.cn/apache/tomcat/tomcat-7/v$TOMCAT_VERSION/bin/apache-tomcat-$TOMCAT_VERSION.zip -O /tmp/tomcat.zip
-RUN unzip /tmp/tomcat.zip -d /tmp/
-RUN rm -rf /tmp/tomcat.zip
-RUN mkdir -p /data
-RUN mv /tmp/apache-tomcat-$TOMCAT_VERSION /data/tomcat
-RUN chmod 777 /data/tomcat/bin/*.sh
-ADD conf/tomcat/tomcat-users.xml /data/tomcat/conf/tomcat-users.xml
+# RUN
+CMD mkdir -p /opt/app
+VOLUME /opt/app/
+CMD /sbin/my_init -- bash -c "mkdir -p /opt/app && aws --region=us-east-1 s3 cp s3://${build_s3_bucket}/${build_s3_key} /opt/app/app.tgz && tar -C /opt/app/ -xzvf /opt/app/app.tgz && bash -ev /opt/app/run.sh"
 
-#install make
-RUN yum -y install gcc automake autoconf libtool make
-#install openssl openssl-dev apr-devel
-RUN yum -y install openssl openssl-devel apr-devel
-#install tomcat-native
-RUN cp /data/tomcat/bin/tomcat-native.tar.gz /tmp/tomcat-native.tar.gz 
-RUN tar zxvf /tmp/tomcat-native.tar.gz -C /tmp; rm -rf /tmp/tomcat-native.tar.gz
-RUN mv /tmp/tomcat-native-*-src /tmp/tomcat-native
-WORKDIR /tmp/tomcat-native/jni/native
-RUN chmod +x ./configure
-RUN chmod +x ./build/*.sh
-RUN ./configure --with-apr=/usr/bin/apr-1-config --with-java-home=$JAVA_HOME --with-ssl=yes
-RUN make & make install
-RUN rm -rf /tmp/tomcat-native
-#config apr
-ENV LD_LIBRARY_PATH /usr/local/apr/lib
 
-#config supervisor
-ADD conf/supervisor/supervisord.conf /etc/supervisord.conf
-ADD conf/supervisor/supervisord_tomcat.sh /data/tomcat/bin/supervisord_tomcat.sh
-RUN chmod +x /data/tomcat/bin/supervisord_tomcat.sh
+# look for new versions here: https://github.com/phusion/baseimage-docker/blob/master/Changelog.md
+# has 'python3', nothing linked to 'python'.
 
-EXPOSE 80 
+# need gcc to compile psycopg2
+# env: http://askubuntu.com/a/506635/69983
+ADD get-pip.py /usr/src/get-pip.py
+ADD requirements.txt /usr/src/requirements.txt
 
-CMD ["supervisord", "-n"] 
 
-RUN java -version
+# neurodebian source and key: pandas, scipy, etc.
+# http://neuro.debian.net/pkglists/toc_pkgs_for_release_trusty.html
+# http://neuro.debian.net/pkgs/python3-pandas-lib.html
+
+##ADD neurodebian.sources.list /etc/apt/sources.list.d/neurodebian.sources.list
+##RUN apt-key adv --recv-keys --keyserver hkp://pgp.mit.edu:80 0xA5D32F012649A5A9
+
+# need python3-dev for any pip installs, basically. freetype, pkg-config are for matplotlib
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y libpq-dev python3-dev g++ libfreetype6-dev pkg-config libffi-dev build-essential libssl-dev # "python3-pandas=0.17.*"
+## others: python3-scipy python3-pandas-lib python3-pandas
+
+RUN python3 /usr/src/get-pip.py && pip3 install "psycopg2>=2.6,<2.7" cython "pandas>=0.18,<0.19" "scipy>=0.17.1,<0.18" awscli && LANG=en_US.UTF-8 pip install --upgrade -r /usr/src/requirements.txt && python3 -m nltk.downloader -d /usr/local/share/nltk_data wordnet punkt stopwords
+#RUN DEBIAN_FRONTEND=noninteractive apt-get autoremove -y gcc
+# keep this for later pip work
+
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
+RUN mkdir -p /opt/app
+VOLUME /opt/
+VOLUME /usr/src/app/
+
+ENV build_s3_bucket="BUCKET_NAME"
+ENV build_s3_key="BUCKET_KEY"
+
+# make sure volumes are the last thing done in their directory. otherwise contents are discarded with a further file operation.
+VOLUME /opt/
+VOLUME /usr/src/app/
+
+# no matter the command, we wrap it with my_init, which gets the services running.
+CMD /sbin/my_init -- bash -c "mkdir -p /opt/app && aws --region=us-east-1 s3 cp s3://${build_s3_bucket}/${build_s3_key} /opt/app/app.tgz && tar -C /opt/app/ -xzvf /opt/app/app.tgz && bash /opt/app/run.sh"
