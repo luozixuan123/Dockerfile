@@ -1,1 +1,1 @@
-FROM paulflorea/python3-uwsgi-scipy-numpy:latest
+FROM paulflorea/python3-uwsgi-scipy-numpy:latest-alpine
