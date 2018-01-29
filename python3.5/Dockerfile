@@ -1,27 +1,37 @@
-FROM tedder42/python3-scipy-cron:latest
+FROM ubuntu:14.04
 
-# debian based; https://github.com/docker-library/openjdk/blob/master/openjdk-8-jre/Dockerfile
 
-# we need python- for aws-cli, if nothing else.
-ADD get-pip.py /usr/src/get-pip.py
-ADD requirements.txt /usr/src/requirements.txt
+RUN locale-gen en_US.UTF-8
+ENV LANG en_US.UTF-8
+#ENV LANGUAGE en_US:en
+#ENV LC_ALL en_US.UTF-8
 
-## OpenJDK 8 PPA
-RUN echo deb http://ppa.launchpad.net/openjdk-r/ppa/ubuntu trusty main > /etc/apt/sources.list.d/openjdk8.list && apt-key adv --keyserver keyserver.ubuntu.com --recv-keys DA1A4A13543B466853BAF164EB9B1D8886F44E2A && DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y libpq-dev gcc python3-dev openjdk-8-jre-headless openjdk-8-jdk unzip libffi-dev build-essential libssl-dev
-RUN /var/lib/dpkg/info/ca-certificates-java.postinst configure && apt-get install -y ca-certificates ca-certificates-java
-RUN python3 /usr/src/get-pip.py && pip3 install --upgrade awscli && LANG=en_US.UTF-8 pip install --upgrade -r /usr/src/requirements.txt
 
-ADD aws-rds-ssl-2016.pem /usr/src/aws-rds-ssl-2016.pem
-# 'changeit' is the default for java. yeah, wtf.
-RUN keytool -import -keystore /etc/ssl/certs/java/cacerts -file /usr/src/aws-rds-ssl-2016.pem -storepass 'changeit' -noprompt -alias aws-rds-2016-v2
-# currently (12/21/2016) 174 certs. We just want to make sure it isn't zero or one.
-RUN keytool -list -keystore /etc/ssl/certs/java/cacerts -storepass 'changeit' -noprompt |grep -c "Certificate fingerprint"
-RUN CERTCOUNT=$(keytool -list -keystore /etc/ssl/certs/java/cacerts -storepass 'changeit' -noprompt |grep -c "Certificate fingerprint"); if [ "$CERTCOUNT" -gt 100 ]; then echo "we have enough certs ($CERTCOUNT)"; else echo "wat, we expected more certs ($CERTCOUNT)"; exit 1; fi
+RUN apt-get update && apt-get install -y python3 python3-scipy python3-pip python3-dev libpq-dev python3-dev libffi-dev
+RUN pip3 install --upgrade pip==8.1.2
+RUN ln -s /usr/bin/python3 /usr/bin/python
+RUN pip install awscli
 
-ENV build_s3_bucket="BUCKET_NAME"
-ENV build_s3_key="BUCKET_KEY"
-
-# RUN
 CMD mkdir -p /opt/app
-VOLUME /opt/app/
-CMD /sbin/my_init -- bash -c "mkdir -p /opt/app && aws --region=us-east-1 s3 cp s3://${build_s3_bucket}/${build_s3_key} /opt/app/app.tgz && tar -C /opt/app/ -xzvf /opt/app/app.tgz && bash -ev /opt/app/run.sh"
+VOLUME /opt/
+VOLUME /usr/src/app/
+
+ADD requirements.txt /opt/app/requirements.txt
+RUN pip install -r /opt/app/requirements.txt
+# RUN
+# CMD
+
+
+MAINTAINER Guillaume Carre <guillaume.carre@gmail.com>
+
+RUN apt-get update
+RUN apt-get install -y software-properties-common
+
+# Install Java
+RUN add-apt-repository ppa:webupd8team/java
+RUN apt-get update
+RUN echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | sudo /usr/bin/debconf-set-selections
+RUN apt-get install -q -y oracle-java8-installer
+RUN apt-get install -q -y oracle-java8-set-default
+
+CMD ["java"]
