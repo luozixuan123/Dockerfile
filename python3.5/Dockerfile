@@ -1,1 +1,1 @@
-FROM ksimple/java8-mvn-nodejs-npm-python3:latest
+FROM python3-scipy-cron:latest
