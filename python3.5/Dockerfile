@@ -1,1 +1,1 @@
-FROM python3-scipy-cron:latest
+FROM tedder42/python3-scipy-cron:latest
