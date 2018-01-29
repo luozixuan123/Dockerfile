@@ -1,3 +1,3 @@
-FROM pcfseceng/scipython:latest
+FROM jupyter/scipy-notebook:latest
 
 RUN java -version
