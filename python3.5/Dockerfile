@@ -1,1 +1,1 @@
-FROM aturner/java-python:latest
+FROM ksimple/java8-mvn-nodejs-npm-python3:latest
