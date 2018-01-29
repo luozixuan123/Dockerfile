@@ -1,1 +1,1 @@
-FROM python:3.5
+FROM jermainedavis/java-python:latest
