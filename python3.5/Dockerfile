@@ -1,1 +1,1 @@
-FROM jermainedavis/java-python:latest
+FROM aturner/java-python:latest
