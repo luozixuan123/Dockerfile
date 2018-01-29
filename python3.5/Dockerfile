@@ -1,3 +1,3 @@
-FROM jupyter/scipy-notebook:latest
+FROM jamesanglin/numpy-scipy:latest
 
 RUN java -version
