@@ -1,1 +1,1 @@
-FROM tedder42/python3-scipy-cron:latest
+FROM ruimashita/scipy:latest
