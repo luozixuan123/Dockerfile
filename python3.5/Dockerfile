@@ -20,7 +20,7 @@ ADD requirements.txt /opt/app/requirements.txt
 RUN pip install -r /opt/app/requirements.txt
 # RUN
 # CMD
-RUN pip3 install scipy --upgrade
+RUN pip install scipy --upgrade
 
 
 MAINTAINER Guillaume Carre <guillaume.carre@gmail.com>
