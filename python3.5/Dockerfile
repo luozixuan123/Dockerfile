@@ -1,1 +1,3 @@
-FROM paulflorea/python3-uwsgi-scipy-numpy:latest-alpine
+FROM pcfseceng/scipython:latest
+
+RUN java -version
