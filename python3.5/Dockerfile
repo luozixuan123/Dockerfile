@@ -1,1 +1,1 @@
-FROM ruimashita/scipy:latest
+FROM paulflorea/python3-uwsgi-scipy-numpy:latest
