@@ -1,4 +1,4 @@
-FROM elasticsearch:5.6
+FROM docker.elastic.co/elasticsearch/elasticsearch:6.2.1
 
 MAINTAINER chenlei leichen.china@gmail.com
 
