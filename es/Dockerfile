@@ -1,4 +1,4 @@
-FROM elasticsearch:2.4.6
+FROM elasticsearch:5.6
 
 MAINTAINER chenlei leichen.china@gmail.com
 
