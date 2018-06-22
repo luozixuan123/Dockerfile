@@ -1,6 +1,4 @@
-FROM docker.elastic.co/elasticsearch/elasticsearch:6.2.2
-
-MAINTAINER chenlei leichen.china@gmail.com
+FROM docker.elastic.co/elasticsearch/elasticsearch:6.2.4
 
 COPY run.sh /
 
